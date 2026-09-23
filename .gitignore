@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# OS files
+.DS_Store
+
+# Database
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
