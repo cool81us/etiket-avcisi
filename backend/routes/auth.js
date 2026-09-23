@@ -28,6 +28,14 @@ router.post('/register', (req, res) => {
         const validRoles = ['student', 'teacher'];
         const userRole = validRoles.includes(role) ? role : 'student';
 
+        // Ogretmen kaydi icin davet kodu zorunlu
+        if (userRole === 'teacher') {
+            const { inviteCode } = req.body;
+            if (!inviteCode || inviteCode !== config.teacherInviteCode) {
+                return res.status(403).json({ error: 'Gecersiz ogretmen davet kodu' });
+            }
+        }
+
         const existingUser = db.prepare('SELECT id FROM users WHERE username = ? OR email = ?').get(username, email);
         if (existingUser) {
             return res.status(409).json({ error: 'Kullanıcı adı veya e-posta zaten mevcut' });

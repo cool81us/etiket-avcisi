@@ -117,6 +117,14 @@ first_step, fire_streak, diamond_eye, speed_demon, error_hunter, sharpshooter, l
 
 Ogretmen panelindeki "Sorular" sekmesinden sorulari duzenleyebilir, yeni soru ekleyebilir ve silebilir.
 
+## Ogretmen Davet Kodu
+
+Ogretmen kaydi icin davet kodu zorunludur. Ogrenciler kodu bilmeden ogretmen hesabi olusturamaz.
+
+- Yerel: `backend/config.js` -> `teacherInviteCode` (varsayilan: `OGRETMEN2026`)
+- Production: `TEACHER_INVITE_CODE` ortam degiskeni (Render ayarlari)
+- Kodu sadece ogretmenlerle paylas; ogrencilere verme
+
 - Sorular `levels.js`'te kalir; degisiklikler backend'de `question_overrides` tablosunda saklanir
 - Ogrenci giris yapinca override'lar `LEVELS` uzerine uygulanir
 - Offline / giris yoksa orijinal sorular kullanilir
@@ -156,6 +164,12 @@ Her geliştirme sonrası kontrol edilecekler:
 
 ### Soru Ozellestirme Testleri
 
+- [ ] Ogretmen rolune gecince davet kodu alani gorunuyor
+- [ ] Ogrenci rolunde davet kodu alani gizli
+- [ ] Kod olmadan ogretmen kaydi engelleniyor (hata mesaji)
+- [ ] Yanlis kodla ogretmen kaydi engelleniyor
+- [ ] Dogru kodla ogretmen kaydi olusuyor
+- [ ] Ogrenci kaydinda davet kodu gerekmiyor
 - [ ] Ogretmen girisi yapildiginda panelde "Ogrenciler" ve "Sorular" sekmeleri gorunuyor
 - [ ] "Sorular" sekmesinde seviye secici calisiyor
 - [ ] Soru listesi seviye sorularini gosteriyor (tip rozeti + metin)

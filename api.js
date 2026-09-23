@@ -68,9 +68,9 @@ const API = {
 
     // ==================== AUTH ====================
 
-    async register(username, email, password, fullName, role) {
+    async register(username, email, password, fullName, role, inviteCode) {
         const result = await this.request('POST', '/auth/register', {
-            username, email, password, fullName, role
+            username, email, password, fullName, role, inviteCode
         });
         this.setAuth(result.token, result.user);
         return result;

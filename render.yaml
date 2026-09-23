@@ -8,6 +8,8 @@ services:
     envVars:
       - key: JWT_SECRET
         generateValue: true
+      - key: TEACHER_INVITE_CODE
+        generateValue: true
       - key: NODE_ENV
         value: production
       - key: PORT

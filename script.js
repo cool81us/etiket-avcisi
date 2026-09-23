@@ -2358,30 +2358,47 @@ const App = {
         });
 
         const registerForm = document.getElementById("register-form");
-        if (registerForm) registerForm.addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const fullName = document.getElementById("register-fullname").value.trim();
-            const username = document.getElementById("register-username").value.trim();
-            const email = document.getElementById("register-email").value.trim();
-            const password = document.getElementById("register-password").value;
-            const role = document.getElementById("register-role").value;
-            if (!fullName || !username || !email || !password) return;
-
-            try {
-                await API.register(username, email, password, fullName, role);
-                await QuestionOverrides.loadAndApply();
-                UI.showToast("Kayit basarili!", "success");
-                App.updateAuthUI();
-                if (role === "teacher") {
-                    Screens.show("teacher");
-                    TeacherDashboard.load();
-                } else {
-                    Screens.show("level-select");
-                }
-            } catch (err) {
-                UI.showToast(err.message, "error");
+        if (registerForm) {
+            // Rol degisince davet kodu alanini goster/gizle
+            const roleSelect = document.getElementById("register-role");
+            const inviteGroup = document.getElementById("register-invite-group");
+            if (roleSelect && inviteGroup) {
+                roleSelect.addEventListener("change", () => {
+                    inviteGroup.style.display = roleSelect.value === "teacher" ? "block" : "none";
+                });
             }
-        });
+
+            registerForm.addEventListener("submit", async (e) => {
+                e.preventDefault();
+                const fullName = document.getElementById("register-fullname").value.trim();
+                const username = document.getElementById("register-username").value.trim();
+                const email = document.getElementById("register-email").value.trim();
+                const password = document.getElementById("register-password").value;
+                const role = document.getElementById("register-role").value;
+                const inviteCode = document.getElementById("register-invite-code").value.trim();
+                if (!fullName || !username || !email || !password) return;
+
+                if (role === "teacher" && !inviteCode) {
+                    UI.showToast("Ogretmen kaydi icin davet kodu gerekli!", "warning");
+                    return;
+                }
+
+                try {
+                    await API.register(username, email, password, fullName, role, inviteCode);
+                    await QuestionOverrides.loadAndApply();
+                    UI.showToast("Kayit basarili!", "success");
+                    App.updateAuthUI();
+                    if (role === "teacher") {
+                        Screens.show("teacher");
+                        TeacherDashboard.load();
+                    } else {
+                        Screens.show("level-select");
+                    }
+                } catch (err) {
+                    UI.showToast(err.message, "error");
+                }
+            });
+        }
 
         // ---- KLAVYE KISAYOLLARI ----
         document.addEventListener("keydown", (e) => {
