@@ -895,6 +895,16 @@ const Game = {
     selectedOption: null,
     isAnswered: false,
 
+    // Secenekleri karistir (Fisher-Yates) - orijinal indeksleri dondurur
+    shuffleIndices(n) {
+        const indices = Array.from({ length: n }, (_, i) => i);
+        for (let i = n - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [indices[i], indices[j]] = [indices[j], indices[i]];
+        }
+        return indices;
+    },
+
     startLevel(levelId) {
         const level = LEVELS.find((l) => l.id === levelId);
         if (!level) return;
@@ -1011,14 +1021,16 @@ const Game = {
 
         questionArea.innerHTML = html;
 
-        // Secenekler
+        // Secenekler (karisik sirada, A/B/C/D gorunen siraya gore)
         const letters = ["A", "B", "C", "D"];
+        const order = this.shuffleIndices(question.options.length);
         let optionsHtml = '<div class="options-grid">';
-        question.options.forEach((opt, idx) => {
+        order.forEach((origIdx, displayPos) => {
+            const opt = question.options[origIdx];
             optionsHtml += `
-                <div class="option-card" data-index="${idx}" role="button" tabindex="0"
-                     aria-label="Secenek ${letters[idx]}: ${UI.escapeHtml(opt)}">
-                    <span class="option-letter">${letters[idx]}</span>
+                <div class="option-card" data-index="${origIdx}" role="button" tabindex="0"
+                     aria-label="Secenek ${letters[displayPos]}: ${UI.escapeHtml(opt)}">
+                    <span class="option-letter">${letters[displayPos]}</span>
                     <span class="option-text">${UI.escapeHtml(opt)}</span>
                 </div>
             `;
@@ -1170,13 +1182,15 @@ const Game = {
 
         questionArea.innerHTML = html;
 
-        // Secenekler
+        // Secenekler (karisik sirada)
         const letters = ["A", "B", "C", "D"];
+        const order = this.shuffleIndices(question.options.length);
         let optionsHtml = '<div class="options-grid">';
-        question.options.forEach((opt, idx) => {
+        order.forEach((origIdx, displayPos) => {
+            const opt = question.options[origIdx];
             optionsHtml += `
-                <div class="option-card" data-index="${idx}" role="button" tabindex="0">
-                    <span class="option-letter">${letters[idx]}</span>
+                <div class="option-card" data-index="${origIdx}" role="button" tabindex="0">
+                    <span class="option-letter">${letters[displayPos]}</span>
                     <span class="option-text">${UI.escapeHtml(opt)}</span>
                 </div>
             `;

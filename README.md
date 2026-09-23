@@ -150,6 +150,9 @@ Her geliştirme sonrası kontrol edilecekler:
 - [ ] Mobil gorunum uygun
 - [ ] Hata mesajlari saygili
 - [ ] Konsol hatasi yok
+- [ ] Coktan secmeli/secenekli sorularda siklar karisik sirada geliyor
+- [ ] Karisik sik sirasina ragmen dogru cevap kontrolu calisiyor
+- [ ] Ayni soruyu tekrar acinca sik sirasi degisiyor
 
 ### Soru Ozellestirme Testleri
 
