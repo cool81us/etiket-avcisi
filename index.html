@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Etiket Avcisi - HTML Ogrenme Oyunu</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts: Inter + JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- ============================================ -->
+    <!-- Toast Bildirimleri icin Container -->
+    <!-- ============================================ -->
+    <div id="toast-container"></div>
+
+    <!-- ============================================ -->
+    <!-- ANA MENU EKRANI -->
+    <!-- ============================================ -->
+    <section id="screen-menu" class="screen screen--active">
+        <div class="menu-container">
+            <!-- Arka plan animasyonu icin partikuller -->
+            <div class="particles" id="particles"></div>
+
+            <div class="menu-content">
+                <!-- Oyun Logosu ve Basligi -->
+                <div class="menu-logo">
+                    <div class="logo-icon">&lt;/&gt;</div>
+                    <h1 class="game-title">Etiket Avcisi</h1>
+                    <p class="game-subtitle">HTML'in Sirlarini Kesfet</p>
+                </div>
+
+                <!-- Ana Butonlar -->
+                <div class="menu-buttons">
+                    <button class="btn btn--primary btn--large" id="btn-start">
+                        <span class="btn-icon">&#9654;</span>
+                        Oyuna Basla
+                    </button>
+                    <button class="btn btn--secondary" id="btn-how-to-play">
+                        <span class="btn-icon">&#9432;</span>
+                        Nasil Oynanir
+                    </button>
+                    <button class="btn btn--ghost" id="btn-settings">
+                        <span class="btn-icon">&#9881;</span>
+                        Ayarlar
+                    </button>
+                </div>
+
+                <!-- Giris/Kayit Butonlari -->
+                <div class="menu-auth-buttons" id="menu-auth-buttons">
+                    <button class="btn btn--ghost btn--small" id="btn-show-login">
+                        <span class="btn-icon">&#128100;</span>
+                        Giris Yap
+                    </button>
+                    <button class="btn btn--ghost btn--small" id="btn-show-register">
+                        <span class="btn-icon">&#10010;</span>
+                        Kayit Ol
+                    </button>
+                </div>
+                <div class="menu-auth-user" id="menu-auth-user" style="display:none;">
+                    <span id="display-auth-user-name">-</span>
+                    <button class="btn btn--ghost btn--small" id="btn-logout">Cikis Yap</button>
+                </div>
+
+                <!-- Alt Bilgi -->
+                <div class="menu-footer">
+                    <p class="version">v1.0 - Lise BT Dersleri Icin</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- OYUNCU ADI GIRIS EKRANI -->
+    <!-- ============================================ -->
+    <section id="screen-player-name" class="screen screen--hidden">
+        <div class="screen-container">
+            <!-- Ust Kısım: Geri Butonu -->
+            <div class="screen-header">
+                <button class="btn btn--icon" id="btn-back-menu" aria-label="Geri Don">
+                    &#8592;
+                </button>
+            </div>
+
+            <div class="player-name-content">
+                <div class="player-name-icon">&#128100;</div>
+                <h2 class="screen-title">Kim Bu Kahraman?</h2>
+                <p class="screen-description">
+                    Etiket Dunyasi seni bekliyor! Kendi ismini veya bir rumuz gir.
+                </p>
+
+                <!-- Isim Girdisi -->
+                <div class="input-group">
+                    <input
+                        type="text"
+                        id="player-name-input"
+                        class="text-input"
+                        placeholder="Ismin veya rumuzun..."
+                        maxlength="20"
+                        minlength="2"
+                        aria-label="Oyuncu adi"
+                        autocomplete="off"
+                    >
+                    <button class="btn btn--icon btn--small" id="btn-random-name" aria-label="Rastgele isim">
+                        &#127922;
+                    </button>
+                </div>
+
+                <!-- Onerilen Isimler -->
+                <div class="suggested-names">
+                    <span class="suggested-label">Onerilen:</span>
+                    <button class="name-suggestion" data-name="Kod_Avcisi">Kod_Avcisi</button>
+                    <button class="name-suggestion" data-name="Etiket_Ustasi">Etiket_Ustasi</button>
+                    <button class="name-suggestion" data-name="HTML_Hero">HTML_Hero</button>
+                </div>
+
+                <!-- Devam Et Butonu -->
+                <button class="btn btn--primary btn--large" id="btn-continue-name" disabled>
+                    Devam Et &#8594;
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- SEVIYE SECIM EKRANI -->
+    <!-- ============================================ -->
+    <section id="screen-level-select" class="screen screen--hidden">
+        <div class="screen-container">
+            <!-- Ust Baslik -->
+            <div class="level-header">
+                <div class="level-header-left">
+                    <h2 class="screen-title">Etiket Dunyasi Haritasi</h2>
+                    <p class="player-info">
+                        Oyuncu: <strong id="display-player-name">-</strong>
+                    </p>
+                </div>
+                <div class="level-header-right">
+                    <div class="total-score">
+                        <span class="score-label">Toplam Puan</span>
+                        <span class="score-value" id="display-total-score">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Seviye Kartlari -->
+            <div class="level-grid" id="level-grid">
+                <!-- JavaScript ile doldurulacak -->
+            </div>
+
+            <!-- Alt Bilgi -->
+            <div class="level-footer">
+                <button class="btn btn--ghost" id="btn-back-from-levels">
+                    &#8592; Ana Menuye Don
+                </button>
+                <button class="btn btn--secondary btn--small" id="btn-open-report">
+                    📊 Rapor Goruntule
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- OYUN EKRANI (SORU EKRANI) -->
+    <!-- ============================================ -->
+    <section id="screen-game" class="screen screen--hidden">
+        <div class="game-container">
+            <!-- Ust Bilgi Cubugu -->
+            <div class="game-header">
+                <div class="game-header-left">
+                    <button class="btn btn--icon btn--small" id="btn-exit-game" aria-label="Oyundan Cik">
+                        &#8592;
+                    </button>
+                    <div class="level-info">
+                        <span class="level-name" id="game-level-name">-</span>
+                    </div>
+                </div>
+                <div class="game-header-center">
+                    <span class="question-counter" id="question-counter">1 / 10</span>
+                </div>
+                <div class="game-header-right">
+                    <div class="lives" id="lives-display">
+                        <!-- JavaScript ile doldurulacak -->
+                    </div>
+                    <div class="score-badge">
+                        <span class="score-value" id="game-score">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ilerleme Cubugu -->
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progress-bar" style="width: 0%"></div>
+            </div>
+
+            <!-- Soru Alani -->
+            <div class="question-area" id="question-area">
+                <!-- JavaScript ile doldurulacak -->
+            </div>
+
+            <!-- Cevap Alani -->
+            <div class="answer-area" id="answer-area">
+                <!-- JavaScript ile doldurulacak -->
+            </div>
+
+            <!-- Alt Bilgi -->
+            <div class="game-footer">
+                <button class="btn btn--warning btn--small" id="btn-hint">
+                    &#128161; Ipucu
+                </button>
+                <button class="btn btn--primary" id="btn-submit-answer" disabled>
+                    Gonder
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- KOD YAZMA EKRANI -->
+    <!-- ============================================ -->
+    <section id="screen-code-editor" class="screen screen--hidden">
+        <div class="editor-container">
+            <!-- Ust Bilgi -->
+            <div class="editor-header">
+                <div class="editor-header-left">
+                    <button class="btn btn--icon btn--small" id="btn-back-to-game" aria-label="Geri Don">
+                        &#8592;
+                    </button>
+                    <span class="editor-title">Kod Editoru</span>
+                </div>
+                <div class="editor-header-right">
+                    <button class="btn btn--ghost btn--small" id="btn-clear-code">
+                        &#128260; Sifirla
+                    </button>
+                </div>
+            </div>
+
+            <!-- Gorev Aciklamasi -->
+            <div class="editor-task" id="editor-task">
+                <!-- JavaScript ile doldurulacak -->
+            </div>
+
+            <!-- Kod Editoru + Onizleme -->
+            <div class="editor-main">
+                <!-- Sol Panel: Kod Editoru -->
+                <div class="code-panel">
+                    <div class="code-editor-wrapper">
+                        <div class="line-numbers" id="line-numbers">1</div>
+                        <textarea
+                            id="code-input"
+                            class="code-textarea"
+                            spellcheck="false"
+                            autocomplete="off"
+                            autocorrect="off"
+                            autocapitalize="off"
+                            placeholder="HTML kodunuzu buraya yazin..."
+                            aria-label="HTML kod editoru"
+                        ></textarea>
+                    </div>
+                </div>
+
+                <!-- Sag Panel: Canli Onizleme -->
+                <div class="preview-panel">
+                    <div class="preview-header">
+                        <span class="preview-title">Onizleme</span>
+                    </div>
+                    <div class="preview-frame-wrapper">
+                        <iframe
+                            id="preview-frame"
+                            class="preview-iframe"
+                            sandbox="allow-same-origin"
+                            title="HTML Onizleme"
+                        ></iframe>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alt Butonlar -->
+            <div class="editor-footer">
+                <button class="btn btn--warning btn--small" id="btn-hint-editor">
+                    &#128161; Ipucu
+                </button>
+                <button class="btn btn--success" id="btn-check-code">
+                    &#10003; Kontrol Et
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- BASARI EKRANI (DOGRU/YANLIS FEEDBACK) -->
+    <!-- ============================================ -->
+    <div id="feedback-overlay" class="overlay overlay--hidden">
+        <div class="feedback-card" id="feedback-card">
+            <div class="feedback-icon" id="feedback-icon">&#10004;</div>
+            <h3 class="feedback-title" id="feedback-title">Dogru!</h3>
+            <p class="feedback-message" id="feedback-message"></p>
+            <div class="feedback-points" id="feedback-points"></div>
+            <div class="feedback-explanation" id="feedback-explanation"></div>
+            <div class="feedback-buttons">
+                <button class="btn btn--primary" id="btn-next-question">
+                    Sonraki Soru &#8594;
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- NE OGRENDIN? OZET EKRANI -->
+    <!-- ============================================ -->
+    <div id="summary-overlay" class="overlay overlay--hidden">
+        <div class="summary-card">
+            <div class="summary-header">
+                <div class="summary-icon">&#128218;</div>
+                <h3 class="summary-title" id="summary-title">Ne Ogrendin?</h3>
+            </div>
+            <div class="summary-content" id="summary-content">
+                <!-- JavaScript ile doldurulacak -->
+            </div>
+            <div class="summary-stats" id="summary-stats">
+                <!-- Puan ve yildiz bilgisi -->
+            </div>
+            <div class="summary-buttons">
+                <button class="btn btn--primary btn--large" id="btn-continue-to-results">
+                    Sonuclari Gor &#8594;
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- IPUCU EKRANI -->
+    <!-- ============================================ -->
+    <div id="hint-overlay" class="overlay overlay--hidden">
+        <div class="hint-card">
+            <div class="hint-header">
+                <h3 class="hint-title">&#128161; Ipucu</h3>
+                <button class="btn btn--icon btn--small" id="btn-close-hint" aria-label="Kapat">
+                    &#10005;
+                </button>
+            </div>
+            <div class="hint-content" id="hint-content">
+                <!-- JavaScript ile doldurulacak -->
+            </div>
+            <div class="hint-cost">
+                <span class="cost-warning">Ipucu kullanimi: -20 puan</span>
+            </div>
+            <div class="hint-buttons">
+                <button class="btn btn--secondary" id="btn-use-hint">
+                    Ipucu Goster
+                </button>
+                <button class="btn btn--ghost" id="btn-close-hint-btn">
+                    Kapat
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- OYUN BITIS EKRANI -->
+    <!-- ============================================ -->
+    <section id="screen-game-over" class="screen screen--hidden">
+        <div class="screen-container">
+            <div class="game-over-content">
+                <!-- Konfeti Animasyonu -->
+                <div class="confetti" id="confetti"></div>
+
+                <div class="game-over-icon">&#127942;</div>
+                <h2 class="game-over-title">Tebrikler!</h2>
+                <p class="game-over-subtitle" id="game-over-message">
+                    Bu seviyeyi tamamladin!
+                </p>
+
+                <!-- Sonuclar -->
+                <div class="game-over-stats">
+                    <div class="stat-item">
+                        <span class="stat-value" id="go-score">0</span>
+                        <span class="stat-label">Puan</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="go-stars">&#9733;&#9733;&#9733;</span>
+                        <span class="stat-label">Yildiz</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="go-correct">0/10</span>
+                        <span class="stat-label">Dogru</span>
+                    </div>
+                </div>
+
+                <!-- Butonlar -->
+                <div class="game-over-buttons">
+                    <button class="btn btn--primary btn--large" id="btn-next-level">
+                        Sonraki Seviye &#8594;
+                    </button>
+                    <button class="btn btn--secondary" id="btn-retry-level">
+                        &#128260; Tekrar Dene
+                    </button>
+                    <button class="btn btn--ghost" id="btn-back-to-levels">
+                        &#127968; Seviye Secimine Don
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- BASARI EKRANI (TUM OYUN BITTI) -->
+    <!-- ============================================ -->
+    <section id="screen-all-complete" class="screen screen--hidden">
+        <div class="screen-container">
+            <div class="all-complete-content">
+                <div class="confetti" id="confetti-final"></div>
+                <div class="complete-icon">&#127881;</div>
+                <h2 class="complete-title">Tebrikler!</h2>
+                <p class="complete-subtitle">
+                    Etiket Dunyasi'nin tum seviyelerini tamamladin!
+                </p>
+                <div class="complete-badge">
+                    <div class="badge-icon">&#127942;</div>
+                    <span class="badge-title">HTML Ustasi</span>
+                </div>
+                <div class="complete-stats">
+                    <div class="stat-item">
+                        <span class="stat-value" id="final-score">0</span>
+                        <span class="stat-label">Toplam Puan</span>
+                    </div>
+                </div>
+                <div class="complete-buttons">
+                    <button class="btn btn--primary btn--large" id="btn-replay-all">
+                        &#128260; Bastan Basla
+                    </button>
+                    <button class="btn btn--ghost" id="btn-back-menu-final">
+                        &#127968; Ana Menu
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- MODAL: Nasil Oynanir -->
+    <!-- ============================================ -->
+    <div id="modal-how-to-play" class="modal modal--hidden">
+        <div class="modal-backdrop" id="modal-backdrop-htp"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Nasil Oynanir?</h3>
+                <button class="btn btn--icon btn--small modal-close" aria-label="Kapat">&#10005;</button>
+            </div>
+            <div class="modal-body">
+                <div class="how-to-step">
+                    <span class="step-number">1</span>
+                    <div class="step-content">
+                        <strong>Ismini Gir</strong>
+                        <p>Oyuna baslamak icin kendine bir isim veya rumuz sec.</p>
+                    </div>
+                </div>
+                <div class="how-to-step">
+                    <span class="step-number">2</span>
+                    <div class="step-content">
+                        <strong>Seviye Sec</strong>
+                        <p>Haritadan bir seviye sec. Her seviye farkli HTML konularini ogretir.</p>
+                    </div>
+                </div>
+                <div class="how-to-step">
+                    <span class="step-number">3</span>
+                    <div class="step-content">
+                        <strong>Sorulari Coz</strong>
+                        <p>Her seviyede 10 soru var. Dogru cevaplar puan kazandirir.</p>
+                    </div>
+                </div>
+                <div class="how-to-step">
+                    <span class="step-number">4</span>
+                    <div class="step-content">
+                        <strong>Kod Yaz</strong>
+                        <p>Bazi sorularda gercek HTML kodu yazman gerekecek.</p>
+                    </div>
+                </div>
+                <div class="how-to-step">
+                    <span class="step-number">5</span>
+                    <div class="step-content">
+                        <strong>Yildiz Kazan</strong>
+                        <p>Her seviyede en fazla 3 yildiz kazanabilirsin. Tum seviyeleri tamamla!</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn--primary modal-close">Anladim!</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- GIRIS EKRANI -->
+    <!-- ============================================ -->
+    <section id="screen-login" class="screen screen--hidden">
+        <div class="screen-container">
+            <div class="screen-header">
+                <button class="btn btn--icon" id="btn-back-from-login" aria-label="Geri Don">&#8592;</button>
+            </div>
+            <div class="auth-content">
+                <div class="auth-icon">&#128274;</div>
+                <h2 class="screen-title">Giris Yap</h2>
+                <p class="screen-description">Hesabinla giris yaparak ilerlemeni kaydet.</p>
+                <form id="login-form" class="auth-form">
+                    <div class="input-group">
+                        <input type="text" id="login-username" class="text-input" placeholder="Kullanici adi veya e-posta" required minlength="3" autocomplete="username">
+                    </div>
+                    <div class="input-group">
+                        <input type="password" id="login-password" class="text-input" placeholder="Sifre" required minlength="6" autocomplete="current-password">
+                    </div>
+                    <button type="submit" class="btn btn--primary btn--large" id="btn-login-submit">Giris Yap</button>
+                </form>
+                <p class="auth-switch">Hesabin yok mu? <button class="btn-link" id="btn-goto-register">Kayit Ol</button></p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- KAYIT EKRANI -->
+    <!-- ============================================ -->
+    <section id="screen-register" class="screen screen--hidden">
+        <div class="screen-container">
+            <div class="screen-header">
+                <button class="btn btn--icon" id="btn-back-from-register" aria-label="Geri Don">&#8592;</button>
+            </div>
+            <div class="auth-content">
+                <div class="auth-icon">&#128221;</div>
+                <h2 class="screen-title">Kayit Ol</h2>
+                <p class="screen-description">Yeni bir hesap olusturarak basla.</p>
+                <form id="register-form" class="auth-form">
+                    <div class="input-group">
+                        <input type="text" id="register-fullname" class="text-input" placeholder="Adin Soyadin" required minlength="2" autocomplete="name">
+                    </div>
+                    <div class="input-group">
+                        <input type="text" id="register-username" class="text-input" placeholder="Kullanici adi" required minlength="3" autocomplete="username">
+                    </div>
+                    <div class="input-group">
+                        <input type="email" id="register-email" class="text-input" placeholder="E-posta" required autocomplete="email">
+                    </div>
+                    <div class="input-group">
+                        <input type="password" id="register-password" class="text-input" placeholder="Sifre (en az 6 karakter)" required minlength="6" autocomplete="new-password">
+                    </div>
+                    <div class="input-group">
+                        <select id="register-role" class="text-input">
+                            <option value="student">Ogrenci</option>
+                            <option value="teacher">Ogretmen</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn--primary btn--large" id="btn-register-submit">Kayit Ol</button>
+                </form>
+                <p class="auth-switch">Zaten hesabin var mi? <button class="btn-link" id="btn-goto-login">Giris Yap</button></p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- OGRETMEN DASHBOARD EKRANI -->
+    <!-- ============================================ -->
+    <section id="screen-teacher" class="screen screen--hidden">
+        <div class="screen-container">
+            <div class="level-header">
+                <div class="level-header-left">
+                    <button class="btn btn--icon" id="btn-back-from-teacher" aria-label="Geri Don">&#8592;</button>
+                    <h2 class="screen-title">Ogretmen Paneli</h2>
+                </div>
+                <div class="level-header-right">
+                    <button class="btn btn--ghost btn--small" id="btn-teacher-refresh">&#8635; Yenile</button>
+                </div>
+            </div>
+            <div class="teacher-content" id="teacher-content">
+                <!-- JavaScript ile doldurulacak -->
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- BASARI RAPORU EKRANI -->
+    <!-- ============================================ -->
+    <section id="screen-report" class="screen screen--hidden">
+        <div class="screen-container">
+            <div class="report-header">
+                <button class="btn btn--icon" id="btn-back-from-report" aria-label="Geri Don">
+                    &#8592;
+                </button>
+                <h2 class="screen-title">Basari Raporu</h2>
+                <div class="report-actions">
+                    <button class="btn btn--ghost btn--small" id="btn-export-csv">CSV</button>
+                    <button class="btn btn--ghost btn--small" id="btn-export-print">Yazdir</button>
+                </div>
+            </div>
+            <div class="report-content" id="report-content">
+                <!-- JavaScript ile doldurulacak -->
+            </div>
+        </div>
+    </section>
+
+    <!-- JavaScript Dosyalari -->
+    <script src="levels.js?v=2"></script>
+    <script src="api.js?v=2"></script>
+    <script src="analytics.js?v=2"></script>
+    <script src="script.js?v=2"></script>
+</body>
+</html>
