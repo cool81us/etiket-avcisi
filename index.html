@@ -570,11 +570,34 @@
                     <button class="btn btn--ghost btn--small" id="btn-teacher-refresh">&#8635; Yenile</button>
                 </div>
             </div>
+            <div class="teacher-tabs" id="teacher-tabs">
+                <button class="teacher-tab teacher-tab--active" data-tab="students">Ogrenciler</button>
+                <button class="teacher-tab" data-tab="questions">Sorular</button>
+            </div>
             <div class="teacher-content" id="teacher-content">
                 <!-- JavaScript ile doldurulacak -->
             </div>
         </div>
     </section>
+
+    <!-- ============================================ -->
+    <!-- SORU EDITOR OVERLAY -->
+    <!-- ============================================ -->
+    <div id="question-editor-overlay" class="overlay overlay--hidden">
+        <div class="question-editor-card">
+            <div class="question-editor-header">
+                <h3 id="question-editor-title">Soru Ekle</h3>
+                <button class="btn btn--icon btn--small" id="btn-close-question-editor" aria-label="Kapat">&#10005;</button>
+            </div>
+            <div class="question-editor-body" id="question-editor-body">
+                <!-- JavaScript ile doldurulacak -->
+            </div>
+            <div class="question-editor-footer">
+                <button class="btn btn--ghost" id="btn-cancel-question">Iptal</button>
+                <button class="btn btn--primary" id="btn-save-question">Kaydet</button>
+            </div>
+        </div>
+    </div>
 
     <!-- ============================================ -->
     <!-- BASARI RAPORU EKRANI -->
@@ -598,9 +621,9 @@
     </section>
 
     <!-- JavaScript Dosyalari -->
-    <script src="levels.js?v=2"></script>
-    <script src="api.js?v=2"></script>
-    <script src="analytics.js?v=2"></script>
-    <script src="script.js?v=2"></script>
+    <script src="levels.js?v=3"></script>
+    <script src="api.js?v=3"></script>
+    <script src="analytics.js?v=3"></script>
+    <script src="script.js?v=3"></script>
 </body>
 </html>

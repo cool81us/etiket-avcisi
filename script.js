@@ -1932,6 +1932,15 @@ const App = {
             console.warn("Auth UI guncellenemedi:", e);
         }
 
+        // Backend'de oturum aciksa soru override'larini yukle
+        if (API.isOnline) {
+            QuestionOverrides.loadAndApply().then(() => {
+                if (Screens.currentScreen === "level-select") {
+                    LevelSelect.render();
+                }
+            });
+        }
+
         console.log("Etiket Avcisi baslatildi!");
     },
 
@@ -2259,6 +2268,57 @@ const App = {
         safeBind("btn-back-from-teacher", "click", () => Screens.show("menu"));
         safeBind("btn-teacher-refresh", "click", () => TeacherDashboard.load());
 
+        // ---- OGRETMEN SEKMELERI ----
+        const teacherTabs = document.getElementById("teacher-tabs");
+        if (teacherTabs) {
+            teacherTabs.addEventListener("click", (e) => {
+                const tab = e.target.closest(".teacher-tab");
+                if (!tab) return;
+                TeacherDashboard.currentTab = tab.dataset.tab;
+                TeacherDashboard.load();
+            });
+        }
+
+        // ---- SORU EDITOR BUTONLARI ----
+        safeBind("btn-close-question-editor", "click", () => TeacherDashboard.closeEditor());
+        safeBind("btn-cancel-question", "click", () => TeacherDashboard.closeEditor());
+        safeBind("btn-save-question", "click", () => TeacherDashboard.saveQuestion());
+
+        // Overlay disini tiklayinca kapat
+        const qEditorOverlay = document.getElementById("question-editor-overlay");
+        if (qEditorOverlay) {
+            qEditorOverlay.addEventListener("click", (e) => {
+                if (e.target === qEditorOverlay) TeacherDashboard.closeEditor();
+            });
+        }
+
+        // ---- OGRETMEN ICERIK DELEGASYONU ----
+        const teacherContent = document.getElementById("teacher-content");
+        if (teacherContent) {
+            teacherContent.addEventListener("click", (e) => {
+                const btn = e.target.closest("[data-action]");
+                if (!btn) return;
+                const action = btn.dataset.action;
+
+                if (action === "add-question") {
+                    TeacherDashboard.openNewQuestion(TeacherDashboard.selectedLevelId);
+                } else if (action === "edit-question") {
+                    TeacherDashboard.openEditor(
+                        TeacherDashboard.selectedLevelId,
+                        parseInt(btn.dataset.qid)
+                    );
+                } else if (action === "delete-question") {
+                    TeacherDashboard.deleteQuestion(
+                        TeacherDashboard.selectedLevelId,
+                        parseInt(btn.dataset.qid),
+                        btn.dataset.isnew === "1"
+                    );
+                } else if (action === "reset-level") {
+                    TeacherDashboard.resetLevel();
+                }
+            });
+        }
+
         const loginForm = document.getElementById("login-form");
         if (loginForm) loginForm.addEventListener("submit", async (e) => {
             e.preventDefault();
@@ -2269,6 +2329,7 @@ const App = {
             try {
                 await API.login(username, password);
                 await GameState.syncFromBackend();
+                await QuestionOverrides.loadAndApply();
                 UI.showToast("Giris basarili!", "success");
                 App.updateAuthUI();
                 if (API.user.role === "teacher") {
@@ -2294,6 +2355,7 @@ const App = {
 
             try {
                 await API.register(username, email, password, fullName, role);
+                await QuestionOverrides.loadAndApply();
                 UI.showToast("Kayit basarili!", "success");
                 App.updateAuthUI();
                 if (role === "teacher") {
@@ -2313,6 +2375,11 @@ const App = {
             if (e.key === "Escape") {
                 Screens.hideOverlay("feedback-overlay");
                 Screens.hideOverlay("hint-overlay");
+                // Soru editoru aciksa onu da kapat
+                const qEditor = document.getElementById("question-editor-overlay");
+                if (qEditor && !qEditor.classList.contains("overlay--hidden")) {
+                    TeacherDashboard.closeEditor();
+                }
             }
 
             // Enter tusu - feedback overlay'de sonraki soru
@@ -2377,8 +2444,127 @@ const App = {
 /* ============================================
    OGRETMEN DASHBOARD MODULU
    ============================================ */
+/* ============================================
+   SORU OVERRIDE (OGRETMEN OZELLESTIRME)
+   ============================================ */
+const QuestionOverrides = {
+    applied: false,
+    originals: null,
+    _overrides: [],
+
+    // Orijinal sorularin snapshot'ini al (ilk cagrida)
+    snapshotOriginals() {
+        if (this.originals || typeof LEVELS === "undefined") return;
+        this.originals = {};
+        LEVELS.forEach((level) => {
+            this.originals[level.id] = {};
+            level.questions.forEach((q) => {
+                this.originals[level.id][q.id] = JSON.parse(JSON.stringify(q));
+            });
+        });
+    },
+
+    // Backend'den override'lari yukle ve LEVELS'e uygula
+    async loadAndApply() {
+        if (!API.isOnline) return;
+        try {
+            const result = await API.getQuestionOverrides();
+            this.apply(result.overrides || []);
+        } catch (err) {
+            console.warn("Soru override yuklenemedi:", err);
+        }
+    },
+
+    // Override'lari LEVELS uzerine uygula (idempotent)
+    apply(overrides) {
+        if (typeof LEVELS === "undefined" || !Array.isArray(overrides)) return;
+        this.snapshotOriginals();
+
+        // Once orijinallere don (tekrar uygulamada cakismayi onle)
+        if (this.originals) {
+            LEVELS.forEach((level) => {
+                const orig = this.originals[level.id];
+                if (orig) {
+                    level.questions = Object.keys(orig)
+                        .map((k) => JSON.parse(JSON.stringify(orig[k])));
+                    level.questions.sort((a, b) => a.id - b.id);
+                }
+            });
+        }
+
+        overrides.forEach((o) => {
+            const level = LEVELS.find((l) => l.id === o.levelId);
+            if (!level) return;
+
+            if (o.isDeleted) {
+                level.questions = level.questions.filter((q) => q.id !== o.questionId);
+            } else if (o.isNew) {
+                const exists = level.questions.some((q) => q.id === o.questionId);
+                if (!exists && o.question) {
+                    level.questions.push(JSON.parse(JSON.stringify(o.question)));
+                    level.questions.sort((a, b) => a.id - b.id);
+                }
+            } else {
+                const idx = level.questions.findIndex((q) => q.id === o.questionId);
+                if (idx >= 0 && o.question) {
+                    level.questions[idx] = JSON.parse(JSON.stringify(o.question));
+                } else if (o.question) {
+                    level.questions.push(JSON.parse(JSON.stringify(o.question)));
+                    level.questions.sort((a, b) => a.id - b.id);
+                }
+            }
+        });
+
+        this._overrides = overrides;
+        this.applied = true;
+    },
+
+    getOverrides() {
+        return this._overrides || [];
+    },
+
+    isEdited(levelId, questionId) {
+        return this.getOverrides().some(
+            (o) => o.levelId === levelId && o.questionId === questionId && !o.isNew && !o.isDeleted
+        );
+    },
+
+    isNew(levelId, questionId) {
+        return this.getOverrides().some(
+            (o) => o.levelId === levelId && o.questionId === questionId && o.isNew
+        );
+    },
+
+    // Yeni soru icin benzersiz ID oner
+    nextQuestionId(levelId) {
+        const level = LEVELS.find((l) => l.id === levelId);
+        if (!level || !level.questions.length) return 1;
+        return Math.max(...level.questions.map((q) => q.id)) + 1;
+    },
+};
+
+/* ============================================
+   OGRETMEN PANELI
+   ============================================ */
 const TeacherDashboard = {
+    currentTab: "students",
+    selectedLevelId: 1,
+    editing: null, // { levelId, questionId, isNew, question }
+
     async load() {
+        // Sekmeleri guncelle
+        document.querySelectorAll("#teacher-tabs .teacher-tab").forEach((tab) => {
+            tab.classList.toggle("teacher-tab--active", tab.dataset.tab === this.currentTab);
+        });
+
+        if (this.currentTab === "questions") {
+            await this.loadQuestionsTab();
+        } else {
+            await this.loadStudentsTab();
+        }
+    },
+
+    async loadStudentsTab() {
         const container = document.getElementById("teacher-content");
         if (!container) return;
 
@@ -2390,14 +2576,12 @@ const TeacherDashboard = {
 
             let html = '';
 
-            // Sınıf istatistikleri
             html += '<div class="teacher-stats-grid">';
             html += '<div class="teacher-stat-card"><div class="teacher-stat-value">' + stats.totalStudents + '</div><div class="teacher-stat-label">Toplam Ogrenci</div></div>';
             html += '<div class="teacher-stat-card"><div class="teacher-stat-value">' + stats.averageScore + '</div><div class="teacher-stat-label">Ortalama Puan</div></div>';
             html += '<div class="teacher-stat-card"><div class="teacher-stat-value">' + stats.averageXp + '</div><div class="teacher-stat-label">Ortalama XP</div></div>';
             html += '</div>';
 
-            // Ogrenci listesi
             html += '<h3 style="margin-bottom:var(--space-md);">Ogrenciler</h3>';
             if (students.students.length === 0) {
                 html += '<p style="color:var(--color-text-secondary);">Henuz kayitli ogrenci yok.</p>';
@@ -2407,7 +2591,7 @@ const TeacherDashboard = {
                     const lastPlayed = s.last_played ? new Date(s.last_played).toLocaleDateString('tr-TR') : 'Hic oynanmadi';
                     html += '<div class="student-card" data-student-id="' + s.id + '">';
                     html += '<div class="student-info">';
-                    html += '<span class="student-name">' + (s.full_name || s.username) + '</span>';
+                    html += '<span class="student-name">' + UI.escapeHtml(s.full_name || s.username) + '</span>';
                     html += '<span class="student-meta">' + s.completedLevels + '/10 seviye tamamlandi | Son oynama: ' + lastPlayed + '</span>';
                     html += '</div>';
                     html += '<span class="student-score">' + (s.total_score || 0) + ' puan</span>';
@@ -2418,9 +2602,563 @@ const TeacherDashboard = {
 
             container.innerHTML = html;
         } catch (err) {
-            container.innerHTML = '<p style="color:var(--color-error);text-align:center;">Veriler yuklenemedi: ' + err.message + '</p>';
+            container.innerHTML = '<p style="color:var(--color-error);text-align:center;">Veriler yuklenemedi: ' + UI.escapeHtml(err.message) + '</p>';
         }
-    }
+    },
+
+    async loadQuestionsTab() {
+        const container = document.getElementById("teacher-content");
+        if (!container) return;
+
+        // Override'lari tazele
+        await QuestionOverrides.loadAndApply();
+
+        if (typeof LEVELS === "undefined" || !Array.isArray(LEVELS)) {
+            container.innerHTML = '<p style="color:var(--color-error);">Seviyeler yuklenemedi.</p>';
+            return;
+        }
+
+        // Secili seviye gecerli mi?
+        if (!LEVELS.some((l) => l.id === this.selectedLevelId)) {
+            this.selectedLevelId = LEVELS[0].id;
+        }
+
+        const level = LEVELS.find((l) => l.id === this.selectedLevelId);
+
+        let html = '';
+
+        // Arac cubugu: seviye secici
+        html += '<div class="question-toolbar">';
+        html += '<select id="question-level-select" class="text-input" aria-label="Seviye Sec">';
+        LEVELS.forEach((l) => {
+            const selected = l.id === this.selectedLevelId ? ' selected' : '';
+            html += '<option value="' + l.id + '"' + selected + '>' + l.icon + ' Seviye ' + l.id + ': ' + UI.escapeHtml(l.name) + ' (' + l.questions.length + ' soru)</option>';
+        });
+        html += '</select>';
+        html += '<button class="btn btn--primary btn--small" data-action="add-question">+ Yeni Soru</button>';
+        html += '</div>';
+
+        // Soru listesi
+        html += '<div class="question-list">';
+        if (level.questions.length === 0) {
+            html += '<p style="color:var(--color-text-secondary);text-align:center;padding:1rem;">Bu seviyede soru yok.</p>';
+        } else {
+            level.questions.forEach((q) => {
+                const isNew = QuestionOverrides.isNew(level.id, q.id);
+                const isEdited = QuestionOverrides.isEdited(level.id, q.id);
+
+                html += '<div class="question-item">';
+                html += '<div class="question-item-info">';
+                html += '<div class="question-item-meta">';
+                html += '<span class="question-type-badge">' + UI.escapeHtml(q.type) + '</span>';
+                html += '<span style="font-size:0.75rem;color:var(--color-text-secondary);">#' + q.id + '</span>';
+                if (isNew) html += '<span class="question-badge-new">Yeni</span>';
+                if (isEdited) html += '<span class="question-badge-edited">Duzenlenmis</span>';
+                html += '</div>';
+                html += '<div class="question-item-text" title="' + UI.escapeHtml(q.question) + '">' + UI.escapeHtml(q.question) + '</div>';
+                html += '</div>';
+                html += '<div class="question-item-actions">';
+                html += '<button class="btn btn--ghost btn--small" data-action="edit-question" data-qid="' + q.id + '">Duzenle</button>';
+                html += '<button class="btn btn--ghost btn--small" data-action="delete-question" data-qid="' + q.id + '" data-isnew="' + (isNew ? 1 : 0) + '" style="color:var(--color-error);">Sil</button>';
+                html += '</div>';
+                html += '</div>';
+            });
+        }
+        html += '</div>';
+
+        // Alt aksiyonlar
+        html += '<div class="question-actions-bar">';
+        html += '<button class="btn btn--ghost btn--small" data-action="reset-level">Bu Seviyeyi Orijinaline Don</button>';
+        html += '</div>';
+
+        container.innerHTML = html;
+
+        // Seviye secici olayi
+        const select = document.getElementById("question-level-select");
+        if (select) {
+            select.addEventListener("change", () => {
+                this.selectedLevelId = parseInt(select.value);
+                this.loadQuestionsTab();
+            });
+        }
+    },
+
+    // ---- EDITOR ----
+
+    openEditor(levelId, questionId) {
+        const level = LEVELS.find((l) => l.id === levelId);
+        if (!level) return;
+        const question = level.questions.find((q) => q.id === questionId);
+        if (!question) return;
+
+        this.editing = {
+            levelId,
+            questionId,
+            isNew: QuestionOverrides.isNew(levelId, questionId),
+            question: JSON.parse(JSON.stringify(question)),
+        };
+
+        document.getElementById("question-editor-title").textContent =
+            "Soru #" + questionId + " Duzenle";
+        this.renderEditorBody();
+        Screens.showOverlay("question-editor-overlay");
+    },
+
+    openNewQuestion(levelId) {
+        const newId = QuestionOverrides.nextQuestionId(levelId);
+        this.editing = {
+            levelId,
+            questionId: newId,
+            isNew: true,
+            question: {
+                id: newId,
+                type: "multiple-choice",
+                question: "",
+                code: null,
+                options: ["", "", "", ""],
+                correct: 0,
+                hint: "",
+                explanation: "",
+            },
+        };
+
+        document.getElementById("question-editor-title").textContent = "Yeni Soru Ekle";
+        this.renderEditorBody();
+        Screens.showOverlay("question-editor-overlay");
+    },
+
+    closeEditor() {
+        Screens.hideOverlay("question-editor-overlay");
+        this.editing = null;
+    },
+
+    renderEditorBody() {
+        const body = document.getElementById("question-editor-body");
+        if (!body || !this.editing) return;
+
+        const q = this.editing.question;
+        const isCodeFill = q.type === "code-fill";
+
+        let html = '';
+
+        // Soru tipi
+        html += '<div class="q-form-group">';
+        html += '<label for="q-type">Soru Tipi</label>';
+        html += '<select id="q-type">';
+        const types = [
+            ["multiple-choice", "Coktan Secmeli"],
+            ["code-fill", "Kod Doldurma"],
+            ["code-write", "Kod Yazma"],
+            ["code-fix", "Kod Duzeltme"],
+            ["predict", "Tahmin Et"],
+        ];
+        types.forEach(([val, label]) => {
+            const sel = q.type === val ? ' selected' : '';
+            html += '<option value="' + val + '"' + sel + '>' + label + '</option>';
+        });
+        html += '</select>';
+        html += '</div>';
+
+        // Soru metni
+        html += '<div class="q-form-group">';
+        html += '<label for="q-question">Soru Metni</label>';
+        html += '<textarea id="q-question" rows="2" placeholder="Soru metni...">' + UI.escapeHtml(q.question || "") + '</textarea>';
+        html += '</div>';
+
+        // Tipe ozel alanlar
+        html += '<div id="q-type-specific" class="q-type-specific">';
+        html += this.renderTypeSpecific(q, isCodeFill);
+        html += '</div>';
+
+        // Ipucu
+        html += '<div class="q-form-group">';
+        html += '<label for="q-hint">Ipucu</label>';
+        html += '<textarea id="q-hint" rows="2" placeholder="Ogrenciye ipucu...">' + UI.escapeHtml(q.hint || "") + '</textarea>';
+        html += '</div>';
+
+        // Aciklama
+        html += '<div class="q-form-group">';
+        html += '<label for="q-explanation">Aciklama (cevaptan sonra gosterilir)</label>';
+        html += '<textarea id="q-explanation" rows="2" placeholder="Dogru cevabin aciklamasi...">' + UI.escapeHtml(q.explanation || "") + '</textarea>';
+        html += '</div>';
+
+        body.innerHTML = html;
+
+        // Tip degisince alanlari yenile
+        const typeSelect = document.getElementById("q-type");
+        if (typeSelect) {
+            typeSelect.addEventListener("change", () => {
+                const newType = typeSelect.value;
+                this.editing.question.type = newType;
+                // Tipe gore varsayilan soru yapisi kur
+                this.editing.question = this.normalizeQuestionStructure(this.editing.question, newType);
+                const specific = document.getElementById("q-type-specific");
+                if (specific) {
+                    specific.innerHTML = this.renderTypeSpecific(this.editing.question, newType === "code-fill");
+                    this.bindDynamicEditorEvents();
+                }
+            });
+        }
+
+        this.bindDynamicEditorEvents();
+    },
+
+    normalizeQuestionStructure(q, type) {
+        const base = {
+            id: q.id,
+            type,
+            question: q.question || "",
+            hint: q.hint || "",
+            explanation: q.explanation || "",
+        };
+
+        if (type === "multiple-choice" || type === "predict") {
+            return {
+                ...base,
+                code: Array.isArray(q.code) ? q.code : null,
+                options: Array.isArray(q.options) && q.options.length >= 2
+                    ? q.options
+                    : ["", "", "", ""],
+                correct: typeof q.correct === "number" ? q.correct : 0,
+            };
+        }
+
+        if (type === "code-fill") {
+            return {
+                ...base,
+                template: Array.isArray(q.template) ? q.template : [""],
+                blanks: Array.isArray(q.blanks) ? q.blanks : [""],
+            };
+        }
+
+        if (type === "code-write") {
+            return {
+                ...base,
+                requirements: Array.isArray(q.requirements) ? q.requirements : [],
+                validation: q.validation && typeof q.validation === "object"
+                    ? q.validation
+                    : { mustContain: [] },
+            };
+        }
+
+        if (type === "code-fix") {
+            return {
+                ...base,
+                code: Array.isArray(q.code) ? q.code : [""],
+                errors: Array.isArray(q.errors) && q.errors.length > 0
+                    ? q.errors
+                    : [{ line: 1, description: "", fix: "" }],
+            };
+        }
+
+        return base;
+    },
+
+    renderTypeSpecific(q, isCodeFill) {
+        let html = '';
+
+        if (q.type === "multiple-choice" || q.type === "predict") {
+            // Kod (opsiyonel)
+            html += '<div class="q-form-group">';
+            html += '<label for="q-code">Kod Bloğu (opsiyonel, satir satir)</label>';
+            html += '<textarea id="q-code" rows="3" placeholder="Bos birakabilirsiniz">' + UI.escapeHtml(Array.isArray(q.code) ? q.code.join("\n") : "") + '</textarea>';
+            html += '</div>';
+
+            // Secenekler
+            html += '<div class="q-form-group">';
+            html += '<label>Secenekler</label>';
+            html += '<div class="q-options-list">';
+            const letters = ["A", "B", "C", "D"];
+            for (let i = 0; i < 4; i++) {
+                const optVal = Array.isArray(q.options) ? (q.options[i] || "") : "";
+                const checked = q.correct === i ? ' checked' : '';
+                html += '<div class="q-option-row">';
+                html += '<input type="radio" name="q-correct" value="' + i + '"' + checked + ' aria-label="Dogru cevap ' + letters[i] + '">';
+                html += '<span class="q-option-letter">' + letters[i] + '</span>';
+                html += '<input type="text" id="q-option-' + i + '" value="' + UI.escapeHtml(optVal) + '" placeholder="Secenek ' + letters[i] + '">';
+                html += '</div>';
+            }
+            html += '</div>';
+            html += '<p class="hint-text">Dogru cevabi isaretleyin</p>';
+            html += '</div>';
+        }
+
+        if (q.type === "code-fill") {
+            // Gosterim: entity'leri coz, kaydete tekrar encode et
+            const displayTemplate = (Array.isArray(q.template) ? q.template : [])
+                .map((line) => this.decodeEntities(line))
+                .join("\n");
+
+            html += '<div class="q-form-group">';
+            html += '<label for="q-template">Kod Sablonu (satir satir, ____ bosluklari)</label>';
+            html += '<textarea id="q-template" rows="8" placeholder="<html>&#10;  <____>&#10;</html>">' + UI.escapeHtml(displayTemplate) + '</textarea>';
+            html += '<p class="hint-text">Bosluklar icin ____ kullanin. Sirasiyla blanks ile eslesir.</p>';
+            html += '</div>';
+
+            html += '<div class="q-form-group">';
+            html += '<label for="q-blanks">Bosluk Cevaplari (virgul ile ayirin)</label>';
+            html += '<input type="text" id="q-blanks" value="' + UI.escapeHtml((Array.isArray(q.blanks) ? q.blanks : []).join(", ")) + '" placeholder="head, body">';
+            html += '</div>';
+        }
+
+        if (q.type === "code-write") {
+            const v = q.validation || {};
+
+            html += '<div class="q-form-group">';
+            html += '<label for="q-requirements">Gereksinimler (satir satir, ogrenciye gosterilir)</label>';
+            html += '<textarea id="q-requirements" rows="3" placeholder="<html> etiketi olmalı">' + UI.escapeHtml((Array.isArray(q.requirements) ? q.requirements : []).join("\n")) + '</textarea>';
+            html += '</div>';
+
+            html += '<div class="q-form-group">';
+            html += '<label for="q-mustcontain">Zorunlu Icerikler (satir satir)</label>';
+            html += '<textarea id="q-mustcontain" rows="3" placeholder="&lt;!DOCTYPE html&gt;">' + UI.escapeHtml((Array.isArray(v.mustContain) ? v.mustContain : []).join("\n")) + '</textarea>';
+            html += '<p class="hint-text">Kodda bunlarin tamami bulunmali</p>';
+            html += '</div>';
+
+            html += '<div class="q-form-group">';
+            html += '<label for="q-mustcontainone">En Az Biri (satir satir, ops.)</label>';
+            html += '<textarea id="q-mustcontainone" rows="2" placeholder="<head>&#10;<body>">' + UI.escapeHtml((Array.isArray(v.mustContainOne) ? v.mustContainOne : []).join("\n")) + '</textarea>';
+            html += '</div>';
+
+            html += '<div class="q-form-group">';
+            html += '<label for="q-contentcheck">Icerik Kontrolu (ops.)</label>';
+            html += '<input type="text" id="q-contentcheck" value="' + UI.escapeHtml(v.contentCheck || "") + '" placeholder="Merhaba">';
+            html += '<p class="hint-text">Kodda bu metin bulunmali</p>';
+            html += '</div>';
+        }
+
+        if (q.type === "code-fix") {
+            html += '<div class="q-form-group">';
+            html += '<label for="q-fixcode">Hatali Kod (satir satir)</label>';
+            html += '<textarea id="q-fixcode" rows="6" placeholder="<html>&#10;<body>">' + UI.escapeHtml((Array.isArray(q.code) ? q.code : []).join("\n")) + '</textarea>';
+            html += '</div>';
+
+            html += '<div class="q-form-group">';
+            html += '<label>Hatalar</label>';
+            html += '<div class="q-errors-list" id="q-errors-list">';
+            (Array.isArray(q.errors) ? q.errors : []).forEach((err, idx) => {
+                html += '<div class="q-error-row" data-err-idx="' + idx + '">';
+                html += '<input type="number" class="q-err-line" value="' + (err.line || 1) + '" min="1" aria-label="Satir numarasi">';
+                html += '<input type="text" class="q-err-desc" value="' + UI.escapeHtml(err.description || "") + '" placeholder="Hata aciklamasi">';
+                html += '<input type="text" class="q-err-fix" value="' + UI.escapeHtml(err.fix || "") + '" placeholder="Duzeltme">';
+                html += '<button type="button" class="q-error-remove" data-action="remove-error" aria-label="Hatayi sil">&#10005;</button>';
+                html += '</div>';
+            });
+            html += '</div>';
+            html += '<button type="button" class="btn btn--ghost btn--small q-add-error-btn" data-action="add-error">+ Hata Ekle</button>';
+            html += '</div>';
+        }
+
+        return html;
+    },
+
+    decodeEntities(str) {
+        const div = document.createElement("div");
+        div.innerHTML = str;
+        return div.textContent || "";
+    },
+
+    encodeEntities(str) {
+        return str
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+    },
+
+    bindDynamicEditorEvents() {
+        const body = document.getElementById("question-editor-body");
+        if (!body) return;
+
+        body.querySelectorAll('[data-action="add-error"]').forEach((btn) => {
+            btn.addEventListener("click", () => this.addErrorRow());
+        });
+
+        body.querySelectorAll('[data-action="remove-error"]').forEach((btn) => {
+            btn.addEventListener("click", () => {
+                const row = btn.closest(".q-error-row");
+                if (row) row.remove();
+            });
+        });
+    },
+
+    addErrorRow() {
+        const list = document.getElementById("q-errors-list");
+        if (!list) return;
+        const idx = list.children.length;
+        const row = document.createElement("div");
+        row.className = "q-error-row";
+        row.dataset.errIdx = idx;
+        row.innerHTML =
+            '<input type="number" class="q-err-line" value="1" min="1" aria-label="Satir numarasi">' +
+            '<input type="text" class="q-err-desc" placeholder="Hata aciklamasi">' +
+            '<input type="text" class="q-err-fix" placeholder="Duzeltme">' +
+            '<button type="button" class="q-error-remove" data-action="remove-error" aria-label="Hatayi sil">&#10005;</button>';
+        list.appendChild(row);
+        row.querySelector('[data-action="remove-error"]').addEventListener("click", () => row.remove());
+    },
+
+    // Form verilerini topla ve kaydet
+    async saveQuestion() {
+        if (!this.editing) return;
+
+        const type = document.getElementById("q-type").value;
+        const questionText = document.getElementById("q-question").value.trim();
+        const hint = document.getElementById("q-hint").value.trim();
+        const explanation = document.getElementById("q-explanation").value.trim();
+
+        if (!questionText) {
+            UI.showToast("Soru metni gerekli!", "warning");
+            return;
+        }
+
+        const q = {
+            id: this.editing.questionId,
+            type,
+            question: questionText,
+            hint,
+            explanation,
+        };
+
+        if (type === "multiple-choice" || type === "predict") {
+            const options = [];
+            for (let i = 0; i < 4; i++) {
+                const el = document.getElementById("q-option-" + i);
+                if (el && el.value.trim()) options.push(el.value.trim());
+            }
+            if (options.length < 2) {
+                UI.showToast("En az 2 secenek gerekli!", "warning");
+                return;
+            }
+            const correctEl = document.querySelector('input[name="q-correct"]:checked');
+            let correct = correctEl ? parseInt(correctEl.value) : 0;
+            if (correct >= options.length) correct = 0;
+
+            const codeEl = document.getElementById("q-code");
+            const codeVal = codeEl ? codeEl.value.trim() : "";
+            q.code = codeVal ? codeVal.split("\n") : null;
+            q.options = options;
+            q.correct = correct;
+        }
+
+        if (type === "code-fill") {
+            const templateEl = document.getElementById("q-template");
+            const blanksEl = document.getElementById("q-blanks");
+            const rawTemplate = templateEl ? templateEl.value : "";
+            const blanks = (blanksEl ? blanksEl.value : "")
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+
+            const templateLines = rawTemplate.split("\n").filter((l, i, arr) => {
+                // son bos satiri atla
+                return !(i === arr.length - 1 && l === "");
+            });
+
+            const blankCount = templateLines.join("\n").split("____").length - 1;
+            if (blankCount !== blanks.length) {
+                UI.showToast("____ sayisi (" + blankCount + ") blanks sayisiyla (" + blanks.length + ") eslesmeli!", "warning");
+                return;
+            }
+
+            // Entity'lere encode et (levels.js formati)
+            q.template = templateLines.map((l) => this.encodeEntities(l));
+            q.blanks = blanks;
+        }
+
+        if (type === "code-write") {
+            const reqEl = document.getElementById("q-requirements");
+            const mustEl = document.getElementById("q-mustcontain");
+            const oneEl = document.getElementById("q-mustcontainone");
+            const contentEl = document.getElementById("q-contentcheck");
+
+            const requirements = reqEl ? reqEl.value.split("\n").map((s) => s.trim()).filter(Boolean) : [];
+            const mustContain = mustEl ? mustEl.value.split("\n").map((s) => s.trim()).filter(Boolean) : [];
+            const mustContainOne = oneEl ? oneEl.value.split("\n").map((s) => s.trim()).filter(Boolean) : [];
+            const contentCheck = contentEl ? contentEl.value.trim() : "";
+
+            if (mustContain.length === 0 && !contentCheck) {
+                UI.showToast("En az bir zorunlu icerik veya icerik kontrolu gerekli!", "warning");
+                return;
+            }
+
+            q.requirements = requirements;
+            q.validation = { mustContain };
+            if (mustContainOne.length > 0) q.validation.mustContainOne = mustContainOne;
+            if (contentCheck) q.validation.contentCheck = contentCheck;
+        }
+
+        if (type === "code-fix") {
+            const codeEl = document.getElementById("q-fixcode");
+            const codeLines = codeEl ? codeEl.value.split("\n").filter((l, i, arr) => !(i === arr.length - 1 && l === "")) : [];
+
+            const errors = [];
+            document.querySelectorAll("#q-errors-list .q-error-row").forEach((row) => {
+                const line = parseInt(row.querySelector(".q-err-line").value) || 1;
+                const description = row.querySelector(".q-err-desc").value.trim();
+                const fix = row.querySelector(".q-err-fix").value.trim();
+                if (description) {
+                    errors.push({ line, description, fix: fix || "Duzeltilecek" });
+                }
+            });
+
+            if (codeLines.length === 0) {
+                UI.showToast("Hatali kod satiri gerekli!", "warning");
+                return;
+            }
+            if (errors.length === 0) {
+                UI.showToast("En az bir hata tanimi gerekli!", "warning");
+                return;
+            }
+
+            q.code = codeLines;
+            q.errors = errors;
+        }
+
+        try {
+            if (this.editing.isNew) {
+                await API.createQuestion(this.editing.levelId, q);
+                UI.showToast("Yeni soru eklendi!", "success");
+            } else {
+                await API.updateQuestion(this.editing.levelId, this.editing.questionId, q);
+                UI.showToast("Soru guncellendi!", "success");
+            }
+
+            this.closeEditor();
+            await QuestionOverrides.loadAndApply();
+            await this.loadQuestionsTab();
+        } catch (err) {
+            UI.showToast(err.message, "error");
+        }
+    },
+
+    async deleteQuestion(levelId, questionId, isNew) {
+        const msg = isNew
+            ? "Bu yeni soruyu silmek istediginize emin misiniz?"
+            : "Bu soruyu silmek istediginize emin misiniz? (Orijinal soru gizlenir)";
+        if (!confirm(msg)) return;
+
+        try {
+            await API.deleteQuestion(levelId, questionId, isNew);
+            UI.showToast("Soru silindi.", "success");
+            await QuestionOverrides.loadAndApply();
+            await this.loadQuestionsTab();
+        } catch (err) {
+            UI.showToast(err.message, "error");
+        }
+    },
+
+    async resetLevel() {
+        if (!confirm("Bu seviyedeki tum degisiklikler orijinal haline dondurulecek. Emin misiniz?")) return;
+
+        try {
+            await API.resetQuestions(this.selectedLevelId);
+            UI.showToast("Seviye orijinaline donduruldu.", "success");
+            await QuestionOverrides.loadAndApply();
+            await this.loadQuestionsTab();
+        } catch (err) {
+            UI.showToast(err.message, "error");
+        }
+    },
 };
 
 /* ============================================

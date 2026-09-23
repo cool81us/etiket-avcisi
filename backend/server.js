@@ -48,14 +48,16 @@ async function startServer() {
     // Frontend dosyalarını sun
     app.use(express.static(path.join(__dirname, '..')));
 
-    // API rotaları
+    // API rotalari
     const authRoutes = require('./routes/auth');
     const studentRoutes = require('./routes/student');
     const teacherRoutes = require('./routes/teacher');
+    const questionRoutes = require('./routes/questions');
 
     app.use('/api/auth', authRoutes);
     app.use('/api/student', studentRoutes);
     app.use('/api/teacher', teacherRoutes);
+    app.use('/api/questions', questionRoutes);
 
     // Health check
     app.get('/api/health', (req, res) => {

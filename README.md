@@ -59,11 +59,22 @@ Her geliştirme sonrasında manuel olarak test edilebilecek bir kontrol listesi 
 
 ```
 etiket-avcisi/
-├── index.html      # Ana HTML dosyası, tüm ekranlar
-├── style.css       # Tüm stiller
-├── script.js       # Oyun mantığı, GameState, Scoring, HintSystem, Game, ReportExporter, App
-├── analytics.js    # Analitik motoru, Rozet Sistemi (15 rozet), Rapor Oluşturucu
-└── levels.js       # 10 seviye, 100 soru
+├── index.html      # Ana HTML dosyasi, tum ekranlar + soru editoru overlay
+├── style.css       # Tum stiller (ogretmen paneli, soru editoru dahil)
+├── script.js       # Oyun mantigi, GameState, QuestionOverrides, TeacherDashboard, App
+├── api.js          # Backend API servis katmani (soru override metodlari dahil)
+├── analytics.js    # Analitik motoru, Rozet Sistemi (15 rozet), Rapor Olusturucu
+├── levels.js       # 10 seviye, 100 soru (orijinal - override'lar uzerine biner)
+└── backend/
+    ├── server.js            # Express sunucu
+    ├── config.js            # Yapilandirma (env degiskenleri)
+    ├── db/schema.sql        # 7 tablo (question_overrides dahil)
+    ├── middleware/auth.js   # JWT dogrulama + rol yetkisi
+    └── routes/
+        ├── auth.js          # Kayit, giris, profil
+        ├── student.js       # Ogrenci ilerleme/istatistik
+        ├── teacher.js       # Ogrenci listesi, sinif istatistikleri
+        └── questions.js     # Soru override (ogretmen ozellestirme)
 ```
 
 ## Dosya Sorumlulukları
@@ -102,6 +113,16 @@ etiket-avcisi/
 ### Rozetler (15 adet)
 first_step, fire_streak, diamond_eye, speed_demon, error_hunter, sharpshooter, level_master, puzzle_master, data_analyst, retry_master, time_master, scholar, champion, hint_free, streak_master
 
+## Soru Ozellestirme Sistemi (Ogretmen)
+
+Ogretmen panelindeki "Sorular" sekmesinden sorulari duzenleyebilir, yeni soru ekleyebilir ve silebilir.
+
+- Sorular `levels.js`'te kalir; degisiklikler backend'de `question_overrides` tablosunda saklanir
+- Ogrenci giris yapinca override'lar `LEVELS` uzerine uygulanir
+- Offline / giris yoksa orijinal sorular kullanilir
+- "Bu Seviyeyi Orijinaline Don" ile degisiklikler geri alinir
+- Desteklenen tipler: multiple-choice, code-fill, code-write, code-fix, predict
+
 ## Kontrol Listesi (Test)
 
 Her geliştirme sonrası kontrol edilecekler:
@@ -125,7 +146,28 @@ Her geliştirme sonrası kontrol edilecekler:
 - [ ] Rapor verileri doğru
 - [ ] CSV dışa aktarma çalışıyor
 - [ ] Rozetler doğru kontrol ediliyor
-- [ ] localStorage'a veri kaydediliyor/yükleniyor
-- [ ] Mobil görünüm uygun
-- [ ] Hata mesajları saygılı
-- [ ] Konsol hatası yok
+- [ ] localStorage'a veri kaydediliyor/yukleniyor
+- [ ] Mobil gorunum uygun
+- [ ] Hata mesajlari saygili
+- [ ] Konsol hatasi yok
+
+### Soru Ozellestirme Testleri
+
+- [ ] Ogretmen girisi yapildiginda panelde "Ogrenciler" ve "Sorular" sekmeleri gorunuyor
+- [ ] "Sorular" sekmesinde seviye secici calisiyor
+- [ ] Soru listesi seviye sorularini gosteriyor (tip rozeti + metin)
+- [ ] "Duzenle" ile editor overlay aciliyor
+- [ ] Soru tipi degistirince alanlar guncelleniyor
+- [ ] multiple-choice: 4 secenek + dogru cevap radyosu calisiyor
+- [ ] code-fill: sablon + blanks girisi, ____ sayisi kontrolu calisiyor
+- [ ] code-write: requirements + validation alanlari calisiyor
+- [ ] code-fix: kod satirlari + hata satiri ekleme/silme calisiyor
+- [ ] "Kaydet" ile degisiklik backend'e kaydediliyor
+- [ ] "Yeni Soru" ile soru ekleniyor (Yeni rozeti gorunuyor)
+- [ ] "Sil" ile soru siliniyor (confirm soruyor)
+- [ ] Duzenlenen soruda "Duzenlenmis" rozeti gorunuyor
+- [ ] Ogrenci giris yapinca degistirilmis sorulari goruyor
+- [ ] "Bu Seviyeyi Orijinaline Don" ile reset calisiyor
+- [ ] Ogrenci "Sorular" sekmesine erisemiyor (403)
+- [ ] Escape ile editor kapaniyor
+- [ ] Overlay disina tiklayinca editor kapaniyor

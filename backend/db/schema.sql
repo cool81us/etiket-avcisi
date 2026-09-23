@@ -82,8 +82,23 @@ CREATE TABLE IF NOT EXISTS hint_stats (
     UNIQUE(user_id, level_id, tag_name)
 );
 
--- İndeksler
+-- Soru ozellestirme (ogretmen override)
+CREATE TABLE IF NOT EXISTS question_overrides (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    level_id INTEGER NOT NULL,
+    question_id INTEGER NOT NULL,
+    question_json TEXT NOT NULL,
+    is_new INTEGER DEFAULT 0,
+    is_deleted INTEGER DEFAULT 0,
+    updated_by INTEGER,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL,
+    UNIQUE(level_id, question_id)
+);
+
+-- Indeksler
 CREATE INDEX IF NOT EXISTS idx_student_progress_user ON student_progress(user_id);
 CREATE INDEX IF NOT EXISTS idx_error_history_user ON error_history(user_id);
 CREATE INDEX IF NOT EXISTS idx_question_history_user ON question_history(user_id);
 CREATE INDEX IF NOT EXISTS idx_hint_stats_user ON hint_stats(user_id);
+CREATE INDEX IF NOT EXISTS idx_question_overrides_level ON question_overrides(level_id);

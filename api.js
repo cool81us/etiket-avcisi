@@ -45,7 +45,7 @@ const API = {
         }
 
         const options = { method, headers };
-        if (data && (method === 'POST' || method === 'PUT')) {
+        if (data && (method === 'POST' || method === 'PUT' || method === 'DELETE')) {
             options.body = JSON.stringify(data);
         }
 
@@ -160,6 +160,37 @@ const API = {
 
     async getClassStats() {
         return await this.request('GET', '/teacher/stats');
+    },
+
+    // ==================== QUESTIONS (override) ====================
+
+    async getQuestionOverrides() {
+        return await this.request('GET', '/questions/overrides');
+    },
+
+    async updateQuestion(levelId, questionId, question) {
+        return await this.request('PUT', '/questions/overrides', {
+            levelId, questionId, question
+        });
+    },
+
+    async createQuestion(levelId, question) {
+        return await this.request('POST', '/questions/overrides', {
+            levelId, question
+        });
+    },
+
+    async deleteQuestion(levelId, questionId, isNew) {
+        return await this.request('DELETE', '/questions/overrides', {
+            levelId, questionId, isNew
+        });
+    },
+
+    async resetQuestions(levelId) {
+        const endpoint = levelId
+            ? '/questions/overrides/reset?levelId=' + levelId
+            : '/questions/overrides/reset';
+        return await this.request('DELETE', endpoint);
     }
 };
 
