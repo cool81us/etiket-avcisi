@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Etiket Avcisi - HTML Ogrenme Oyunu</title>
-    <link rel="stylesheet" href="style.css?v=4">
+    <link rel="stylesheet" href="style.css?v=5">
     <!-- Google Fonts: Inter + JetBrains Mono -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -155,9 +155,14 @@
                 <button class="btn btn--ghost" id="btn-back-from-levels">
                     &#8592; Ana Menuye Don
                 </button>
-                <button class="btn btn--secondary btn--small" id="btn-open-report">
-                    📊 Rapor Goruntule
-                </button>
+                <div class="level-footer-right">
+                    <button class="btn btn--secondary btn--small" id="btn-open-redeem">
+                        &#128273; Seviye Kodu
+                    </button>
+                    <button class="btn btn--secondary btn--small" id="btn-open-report">
+                        📊 Rapor Goruntule
+                    </button>
+                </div>
             </div>
         </div>
     </section>
@@ -352,6 +357,44 @@
                     Ipucu Goster
                 </button>
                 <button class="btn btn--ghost" id="btn-close-hint-btn">
+                    Kapat
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- SEVIYE KODU EKRANI (ogrenci kod girisi)      -->
+    <!-- ============================================ -->
+    <div id="redeem-code-overlay" class="overlay overlay--hidden">
+        <div class="hint-card redeem-card">
+            <div class="hint-header">
+                <h3 class="hint-title">&#128273; Seviye Kodu</h3>
+                <button class="btn btn--icon btn--small" id="btn-close-redeem" aria-label="Kapat">
+                    &#10005;
+                </button>
+            </div>
+            <p class="redeem-description">
+                Ogretmeninin verdigi kodu gir. Kodu yazdiginda istenen seviyeye kadar
+                tum seviyeler acilir ve oradan baslayabilirsin.
+            </p>
+            <div class="input-group">
+                <input
+                    type="text"
+                    id="redeem-code-input"
+                    class="text-input"
+                    placeholder="Kodu buraya yaz..."
+                    maxlength="30"
+                    autocomplete="off"
+                    autocapitalize="characters"
+                    aria-label="Seviye kodu"
+                >
+            </div>
+            <div class="hint-buttons">
+                <button class="btn btn--primary" id="btn-redeem-code">
+                    Kodu Kullan
+                </button>
+                <button class="btn btn--ghost" id="btn-cancel-redeem">
                     Kapat
                 </button>
             </div>
@@ -576,6 +619,7 @@
             <div class="teacher-tabs" id="teacher-tabs">
                 <button class="teacher-tab teacher-tab--active" data-tab="students">Ogrenciler</button>
                 <button class="teacher-tab" data-tab="questions">Sorular</button>
+                <button class="teacher-tab" data-tab="codes">Kodlar</button>
             </div>
             <div class="teacher-content" id="teacher-content">
                 <!-- JavaScript ile doldurulacak -->
@@ -624,9 +668,9 @@
     </section>
 
     <!-- JavaScript Dosyalari -->
-    <script src="levels.js?v=4"></script>
-    <script src="api.js?v=4"></script>
-    <script src="analytics.js?v=4"></script>
-    <script src="script.js?v=4"></script>
+    <script src="levels.js?v=5"></script>
+    <script src="api.js?v=5"></script>
+    <script src="analytics.js?v=5"></script>
+    <script src="script.js?v=5"></script>
 </body>
 </html>

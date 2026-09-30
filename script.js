@@ -112,6 +112,7 @@ const GameState = {
         playerName: "",
         currentLevel: 1,
         currentQuestion: 0,
+        unlockedLevel: 1,
         score: 0,
         totalScore: 0,
         lives: 5,
@@ -267,6 +268,10 @@ const GameState = {
         }
         if (!this.data.levelAttempts || typeof this.data.levelAttempts !== "object") {
             this.data.levelAttempts = {};
+            needsSave = true;
+        }
+        if (!Number.isInteger(this.data.unlockedLevel) || this.data.unlockedLevel < 1) {
+            this.data.unlockedLevel = 1;
             needsSave = true;
         }
 
@@ -576,6 +581,7 @@ const GameState = {
             playerName: this.data.playerName,
             currentLevel: 1,
             currentQuestion: 0,
+            unlockedLevel: this.data.unlockedLevel || 1,
             score: 0,
             totalScore: this.data.totalScore || 0,
             lives: 5,
@@ -617,6 +623,19 @@ const GameState = {
 
     getLevelData(levelId) {
         return this.data.completedLevels[levelId] || null;
+    },
+
+    getUnlockedLevel() {
+        return this.data.unlockedLevel || 1;
+    },
+
+    unlockLevel(levelId) {
+        if (Number.isInteger(levelId) && levelId > this.getUnlockedLevel()) {
+            this.data.unlockedLevel = levelId;
+            this.save();
+            return true;
+        }
+        return false;
     },
 };
 
@@ -804,6 +823,7 @@ const LevelSelect = {
             const stars = GameState.getLevelStars(level.id);
             const isLocked =
                 level.id > 1 &&
+                level.id > GameState.getUnlockedLevel() &&
                 !GameState.isLevelCompleted(level.id - 1) &&
                 !isCompleted;
             const isCurrent =
@@ -1973,6 +1993,31 @@ const App = {
         }
     },
 
+    async redeemCode() {
+        const input = document.getElementById("redeem-code-input");
+        const code = ((input && input.value) || "").trim();
+        if (code.length < 3) {
+            UI.showToast("Lutfen gecerli bir kod girin.", "warning");
+            return;
+        }
+        try {
+            const result = await API.redeemCode(code);
+            const unlocked = GameState.unlockLevel(result.levelId);
+            Screens.hideOverlay("redeem-code-overlay");
+            LevelSelect.render();
+            if (unlocked) {
+                UI.showToast(
+                    "Seviye " + result.levelId + " ve oncesindeki seviyeler acildi!",
+                    "success"
+                );
+            } else {
+                UI.showToast("Bu seviyeler zaten acik.", "info");
+            }
+        } catch (err) {
+            UI.showToast(err.message, "error");
+        }
+    },
+
     setupEventListeners() {
         // ---- ANA MENU ----
         document
@@ -2097,6 +2142,44 @@ const App = {
                 GameState.data.score = 0;
                 GameState.save();
                 Screens.show("menu");
+            });
+
+        // ---- SEVIYE KODU ----
+        document
+            .getElementById("btn-open-redeem")
+            .addEventListener("click", () => {
+                const input = document.getElementById("redeem-code-input");
+                if (input) input.value = "";
+                Screens.showOverlay("redeem-code-overlay");
+                if (input) input.focus();
+            });
+
+        document
+            .getElementById("btn-close-redeem")
+            .addEventListener("click", () => Screens.hideOverlay("redeem-code-overlay"));
+
+        document
+            .getElementById("btn-cancel-redeem")
+            .addEventListener("click", () => Screens.hideOverlay("redeem-code-overlay"));
+
+        const redeemOverlay = document.getElementById("redeem-code-overlay");
+        if (redeemOverlay) {
+            redeemOverlay.addEventListener("click", (e) => {
+                if (e.target === redeemOverlay) Screens.hideOverlay("redeem-code-overlay");
+            });
+        }
+
+        document
+            .getElementById("btn-redeem-code")
+            .addEventListener("click", () => App.redeemCode());
+
+        document
+            .getElementById("redeem-code-input")
+            .addEventListener("keydown", (e) => {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    App.redeemCode();
+                }
             });
 
         // ---- RAPOR EKRANI ----
@@ -2329,6 +2412,14 @@ const App = {
                     );
                 } else if (action === "reset-level") {
                     TeacherDashboard.resetLevel();
+                } else if (action === "create-code") {
+                    TeacherDashboard.createCode();
+                } else if (action === "delete-code") {
+                    TeacherDashboard.deleteCode(parseInt(btn.dataset.id));
+                } else if (action === "generate-code") {
+                    TeacherDashboard.generateCodeSuggestion();
+                } else if (action === "copy-code") {
+                    TeacherDashboard.copyCode(btn.dataset.code || "");
                 }
             });
         }
@@ -2406,6 +2497,7 @@ const App = {
             if (e.key === "Escape") {
                 Screens.hideOverlay("feedback-overlay");
                 Screens.hideOverlay("hint-overlay");
+                Screens.hideOverlay("redeem-code-overlay");
                 // Soru editoru aciksa onu da kapat
                 const qEditor = document.getElementById("question-editor-overlay");
                 if (qEditor && !qEditor.classList.contains("overlay--hidden")) {
@@ -2590,6 +2682,8 @@ const TeacherDashboard = {
 
         if (this.currentTab === "questions") {
             await this.loadQuestionsTab();
+        } else if (this.currentTab === "codes") {
+            await this.loadCodesTab();
         } else {
             await this.loadStudentsTab();
         }
@@ -2711,6 +2805,123 @@ const TeacherDashboard = {
                 this.selectedLevelId = parseInt(select.value);
                 this.loadQuestionsTab();
             });
+        }
+    },
+
+    // ---- SEVIYE KODLARI ----
+
+    async loadCodesTab() {
+        const container = document.getElementById("teacher-content");
+        if (!container) return;
+
+        container.innerHTML = '<p style="text-align:center;color:var(--color-text-secondary);">Yukleniyor...</p>';
+
+        try {
+            const result = await API.getCodes();
+            let html = '';
+
+            html += '<div class="question-toolbar">';
+            html += '<select id="code-level-select" class="text-input" aria-label="Seviye Sec">';
+            LEVELS.forEach((l) => {
+                html += '<option value="' + l.id + '">' + l.icon + ' Seviye ' + l.id + ': ' + UI.escapeHtml(l.name) + '</option>';
+            });
+            html += '</select>';
+            html += '<input type="text" id="code-value-input" class="text-input code-input" placeholder="Kodu yaz (orn: HTML5BASLA)" maxlength="30" autocomplete="off" aria-label="Seviye kodu">';
+            html += '<button class="btn btn--ghost btn--small" data-action="generate-code">Kod Oner</button>';
+            html += '<button class="btn btn--primary btn--small" data-action="create-code">+ Kod Ekle</button>';
+            html += '</div>';
+
+            html += '<div class="question-list">';
+            if (result.codes.length === 0) {
+                html += '<p style="color:var(--color-text-secondary);text-align:center;padding:1rem;">Henuz seviye kodu olusturulmamis.</p>';
+            } else {
+                result.codes.forEach((c) => {
+                    const created = c.createdAt ? new Date(c.createdAt).toLocaleDateString('tr-TR') : '';
+                    html += '<div class="question-item">';
+                    html += '<div class="question-item-info">';
+                    html += '<div class="question-item-meta">';
+                    html += '<span class="question-type-badge">Seviye ' + c.levelId + '</span>';
+                    html += '<span class="code-value-badge">' + UI.escapeHtml(c.code) + '</span>';
+                    if (created) html += '<span style="font-size:0.75rem;color:var(--color-text-secondary);">' + created + '</span>';
+                    html += '</div>';
+                    html += '<div class="question-item-text">Ogrenci bu kodu girince 1-' + c.levelId + '. seviyeler acilir</div>';
+                    html += '</div>';
+                    html += '<div class="question-item-actions">';
+                    html += '<button class="btn btn--ghost btn--small" data-action="copy-code" data-code="' + UI.escapeHtml(c.code) + '">Kopyala</button>';
+                    html += '<button class="btn btn--ghost btn--small" data-action="delete-code" data-id="' + c.id + '" style="color:var(--color-error);">Sil</button>';
+                    html += '</div>';
+                    html += '</div>';
+                });
+            }
+            html += '</div>';
+
+            html += '<p class="code-hint">Ogrenciler seviye secim ekranindaki "Seviye Kodu" butonu ile bu kodu girer. Kod buyuk-kucuk harf duyarsizdir.</p>';
+
+            container.innerHTML = html;
+
+            const codeInput = document.getElementById("code-value-input");
+            if (codeInput) {
+                codeInput.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+                        this.createCode();
+                    }
+                });
+            }
+        } catch (err) {
+            container.innerHTML = '<p style="color:var(--color-error);text-align:center;">Kodlar yuklenemedi: ' + UI.escapeHtml(err.message) + '</p>';
+        }
+    },
+
+    async createCode() {
+        const levelSelect = document.getElementById("code-level-select");
+        const input = document.getElementById("code-value-input");
+        const levelId = parseInt(levelSelect ? levelSelect.value : 1);
+        const code = ((input && input.value) || "").trim().toUpperCase();
+
+        if (code.length < 3) {
+            UI.showToast("Kod en az 3 karakter olmali.", "warning");
+            return;
+        }
+
+        try {
+            await API.createCode(code, levelId);
+            UI.showToast("Kod olusturuldu.", "success");
+            this.loadCodesTab();
+        } catch (err) {
+            UI.showToast(err.message, "error");
+        }
+    },
+
+    async deleteCode(id) {
+        if (!confirm("Bu kod silinsin mi? Ogrenciler artik bu kodu kullanamaz.")) return;
+        try {
+            await API.deleteCode(id);
+            UI.showToast("Kod silindi.", "success");
+            this.loadCodesTab();
+        } catch (err) {
+            UI.showToast(err.message, "error");
+        }
+    },
+
+    generateCodeSuggestion() {
+        const levelSelect = document.getElementById("code-level-select");
+        const input = document.getElementById("code-value-input");
+        if (!input) return;
+        const levelId = parseInt(levelSelect ? levelSelect.value : 1);
+        const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+        input.value = "HTML" + levelId + random;
+        input.focus();
+    },
+
+    copyCode(code) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(code).then(
+                () => UI.showToast("Kod kopyalandi.", "success"),
+                () => UI.showToast("Kod kopyalanamadi.", "error")
+            );
+        } else {
+            UI.showToast("Kod: " + code, "info");
         }
     },
 

@@ -191,6 +191,24 @@ const API = {
             ? '/questions/overrides/reset?levelId=' + levelId
             : '/questions/overrides/reset';
         return await this.request('DELETE', endpoint);
+    },
+
+    // ==================== CODES (seviye baslangic kodu) ====================
+
+    async redeemCode(code) {
+        return await this.request('POST', '/codes/redeem', { code });
+    },
+
+    async getCodes() {
+        return await this.request('GET', '/codes');
+    },
+
+    async createCode(code, levelId) {
+        return await this.request('POST', '/codes', { code, levelId });
+    },
+
+    async deleteCode(id) {
+        return await this.request('DELETE', '/codes/' + id);
     }
 };
 

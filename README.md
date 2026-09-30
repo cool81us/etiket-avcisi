@@ -74,7 +74,8 @@ etiket-avcisi/
         ├── auth.js          # Kayit, giris, profil
         ├── student.js       # Ogrenci ilerleme/istatistik
         ├── teacher.js       # Ogrenci listesi, sinif istatistikleri
-        └── questions.js     # Soru override (ogretmen ozellestirme)
+        ├── questions.js     # Soru override (ogretmen ozellestirme)
+        └── codes.js         # Seviye baslangic kodlari (ogretmen olusturur, ogrenci girer)
 ```
 
 ## Dosya Sorumlulukları
@@ -116,6 +117,20 @@ first_step, fire_streak, diamond_eye, speed_demon, error_hunter, sharpshooter, l
 ## Soru Ozellestirme Sistemi (Ogretmen)
 
 Ogretmen panelindeki "Sorular" sekmesinden sorulari duzenleyebilir, yeni soru ekleyebilir ve silebilir.
+
+## Seviye Kodu Ozelligi (Ogretmen)
+
+Ogretmen, ogrencilerin dersin baslamasini istedigi seviyeden oynamasini saglamak icin bir seviye kodu olusturur.
+
+- Ogretmen paneli -> "Kodlar" sekmesinden seviye secer ve kod olusturur (ister elle yazar, ister "Kod Oner" ile uretilir)
+- Ogrenci, seviye secim ekranindaki "Seviye Kodu" butonu ile kodu girer
+- Kod dogrulanirsa 1'den hedef seviyeye kadar tum seviyeler kilitli olmaktan cikar; ogrenci dogrudan hedef seviyeden baslayabilir
+- Kod buyuk-kucuk harf duyarsizdir (backend'de normalize edilir)
+- Kod girisi icin ogrenci girisi zorunlu degildir; sonuc localStorage'a (`unlockedLevel`) kaydedilir
+- Ogrenci "Bastan Basla" yapsa bile seviye kilidi (kod) korunur; ogrenci yeniden kod girmek zorunda kalmaz
+- Ogretmen kodu silerse mevcut ogrencilerin acik kalan seviyeleri kapanmaz (kilit yerelde saklanir), sadece yeni kod girisi calismaz
+- Kod dogrulama ucu `/api/codes/redeem` ayrica rate-limit'lidir (15 dk'da 20 deneme)
+- Backend: `level_codes` tablosu; kodlar tum ogrenciler icin ortaktir (sinif kodu)
 
 ## Ogretmen Davet Kodu
 
@@ -188,3 +203,24 @@ Her geliştirme sonrası kontrol edilecekler:
 - [ ] Ogrenci "Sorular" sekmesine erisemiyor (403)
 - [ ] Escape ile editor kapaniyor
 - [ ] Overlay disina tiklayinca editor kapaniyor
+
+### Seviye Kodu Testleri
+
+- [ ] Ogretmen panelinde "Kodlar" sekmesi gorunuyor ve aciliyor
+- [ ] "Kod Oner" ile rastgele kod uretiliyor
+- [ ] "Kod Ekle" ile kod olusturuluyor ve listede gorunuyor
+- [ ] Ayni kod iki kez eklenemiyor (hata mesaji)
+- [ ] Gecersiz seviye / kisa kod / ozel karakterli kod reddediliyor
+- [ ] "Kopyala" ile kod panoya kopyalaniyor
+- [ ] "Sil" ile kod siliniyor (confirm soruyor)
+- [ ] Ogrenci kodu girince 1'den hedef seviyeye kadar seviyeler aciliyor
+- [ ] Ogrenci kodu girince hedef seviye kartina tiklanabiliyor (kilit yok)
+- [ ] Kod gecersizse saygili hata mesaji gosteriliyor
+- [ ] Kod tekrar girilince "zaten acik" bilgisi gosteriliyor
+- [ ] Kucuk harfle yazilan kod calisiyor (normalizasyon)
+- [ ] Kod girisi giris yapilmadan da calisiyor (girisiz mod)
+- [ ] Sayfa yenilenince unlockedLevel localStorage'dan yukleniyor
+- [ ] Escape ile kod ekrani kapaniyor
+- [ ] Overlay disina tiklayinca kod ekrani kapaniyor
+- [ ] "Bastan Basla" sonrasi seviye kilidi korunuyor
+- [ ] Konsol hatasi yok

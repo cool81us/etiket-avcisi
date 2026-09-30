@@ -45,6 +45,14 @@ async function startServer() {
     app.use('/api/auth/login', authLimiter);
     app.use('/api/auth/register', authLimiter);
 
+    // Kod dogrulama icin ayri limit (kod tahminini zorlastirir)
+    const redeemLimiter = rateLimit({
+        windowMs: 15 * 60 * 1000,
+        max: 20,
+        message: { error: 'Cok fazla kod denemesi. Lutfen 15 dakika sonra tekrar deneyin.' }
+    });
+    app.use('/api/codes/redeem', redeemLimiter);
+
     // Frontend dosyalarını sun
     app.use(express.static(path.join(__dirname, '..')));
 
@@ -53,11 +61,13 @@ async function startServer() {
     const studentRoutes = require('./routes/student');
     const teacherRoutes = require('./routes/teacher');
     const questionRoutes = require('./routes/questions');
+    const codeRoutes = require('./routes/codes');
 
     app.use('/api/auth', authRoutes);
     app.use('/api/student', studentRoutes);
     app.use('/api/teacher', teacherRoutes);
     app.use('/api/questions', questionRoutes);
+    app.use('/api/codes', codeRoutes);
 
     // Health check
     app.get('/api/health', (req, res) => {

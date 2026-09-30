@@ -96,8 +96,19 @@ CREATE TABLE IF NOT EXISTS question_overrides (
     UNIQUE(level_id, question_id)
 );
 
+-- Seviye baslangic kodlari (ogretmen olusturur, ogrenci girince seviyeye kadar kilit acilir)
+CREATE TABLE IF NOT EXISTS level_codes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT NOT NULL COLLATE NOCASE UNIQUE,
+    level_id INTEGER NOT NULL,
+    created_by INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
 -- Indeksler
 CREATE INDEX IF NOT EXISTS idx_student_progress_user ON student_progress(user_id);
+CREATE INDEX IF NOT EXISTS idx_level_codes_code ON level_codes(code);
 CREATE INDEX IF NOT EXISTS idx_error_history_user ON error_history(user_id);
 CREATE INDEX IF NOT EXISTS idx_question_history_user ON question_history(user_id);
 CREATE INDEX IF NOT EXISTS idx_hint_stats_user ON hint_stats(user_id);

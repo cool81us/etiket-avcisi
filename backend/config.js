@@ -3,8 +3,9 @@ module.exports = {
   jwtSecret: process.env.JWT_SECRET || 'etiket-avcisi-secret-key-change-in-production',
   jwtExpiresIn: '7d',
   bcryptRounds: 10,
-  dbPath: './db/etiket-avcisi.db',
+  dbPath: process.env.DB_PATH || './db/etiket-avcisi.db',
   maxErrorHistory: 100,
+  maxLevels: 10,
   teacherInviteCode: process.env.TEACHER_INVITE_CODE || 'OGRETMEN2026',
   corsOrigins: process.env.CORS_ORIGINS
     ? process.env.CORS_ORIGINS.split(',')
